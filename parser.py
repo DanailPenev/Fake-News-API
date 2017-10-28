@@ -7,6 +7,4 @@ def parse(url):
 		tld = url.split('/')[2]
 		if tld[0:4] == "www.":
 			tld = tld[4:]
-		print(tld)
-
-		return (url,soup.title)
+		return (url,soup.title.string)
