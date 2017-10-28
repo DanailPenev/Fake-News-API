@@ -1,16 +1,25 @@
 from flask import Flask, Response, request, jsonify
 import parser, ml
+from flask_cors import CORS
+from flask_csp.csp import csp_header
 app = Flask(__name__)
 
-data = np.loadtxt('data.csv', delimiter=",", dtype='str')
+@app.after_request
+def after_request(response):
+  response.headers.add('Access-Control-Allow-Origin', '*')
+  response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+  response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+  return response
 
-bad_websites = {}
-bad_websites = ml.buildWebsiteSet(bad_websites, data)
+# data = np.loadtxt('data.csv', delimiter=",", dtype='str')
 
-data = data[:, 1:]
+# bad_websites = {}
+# bad_websites = ml.buildWebsiteSet(bad_websites, data)
 
-clf = KNeighborsClassifier(n_neighbors=2)
-ml.train(clf, data)
+# data = data[:, 1:]
+
+# clf = KNeighborsClassifier(n_neighbors=2)
+# ml.train(clf, data)
 
 @app.route("/")
 def hello():
@@ -27,6 +36,16 @@ def check_url():
 	rating['link'] = url
 	return jsonify(rating)
 
+@app.route("/vanko_mock", methods=['POST'])
+@csp_header()
+def vanko_mock():
+	request.get_data()
+	json = request.json
+	url = json['link']
+	tweet = json['id']
+	print(url,tweet)
+	return jsonify({'id':tweet, 'link': url, 'score': 0.05})
+
 # fakenews = np.loadtxt("dataset.csv", delimiter=",", dtype='str')
 # col = np.zeros((fakenews.shape[0],1))
 # fakenews = np.append(fakenews,col,axis=1)
@@ -41,4 +60,5 @@ def check_url():
 # clf.fit(X, y)
 # print(clf.predict(np.array([[0.2]])))
 
-app.run()
+if __name__ == "__main__":
+	app.run(threaded=True)
