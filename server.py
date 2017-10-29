@@ -38,6 +38,7 @@ def check_url():
 	request.get_data()
 	rating = {}
 	json = request.json
+	print(json)
 	url = json['link']
 	tweet = json['id']
 	try:
