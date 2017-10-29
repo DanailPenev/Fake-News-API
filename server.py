@@ -1,5 +1,5 @@
 from flask import Flask, Response, request, jsonify
-import parser, ml, keys
+import parser, ml, keys, bot
 from flask_cors import CORS
 from flask_csp.csp import csp_header
 from sklearn.naive_bayes import MultinomialNB
@@ -7,14 +7,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 import pandas as pd
 from sklearn.externals import joblib
 import botometer
+import random
 app = Flask(__name__)
-
-mashape_key = keys.get_key()
-twitter_app_auth = keys.get_twitter_auth()
-
-bom = botometer.Botometer(wait_on_ratelimit=True,
-                          mashape_key=mashape_key,
-                          **twitter_app_auth)
 
 # # Initialize the `count_vectorizer` 
 count_vectorizer = joblib.load('vectorizer.pkl')
@@ -35,24 +29,27 @@ def hello():
 
 @app.route("/check_url", methods=['POST'])
 def check_url():
+	print("Request received")
 	request.get_data()
 	rating = {}
 	json = request.json
-	print(json)
 	url = json['link']
 	tweet = json['id']
 	try:
 		user = json['user']
 		userat = '@' + user
-		user_score = test_bot(userat)
+		user_score = bot.test_user(userat)['scores']['english']
 		rating['user_score'] = user_score
 		rating['user'] = user
+	except Exception as e:
+		print(e)
+	try:
+		rating['score'] = ml.test(clf, parser.parse(url), count_vectorizer)[0,0]
 	except:
-		pass
-	rating['score'] = ml.test(clf, parser.parse(url), count_vectorizer)[0,1]
+		rating['score'] = 0.5
 	rating['id'] = tweet
 	rating['link'] = url
-	print(rating)
+	print(json, rating)
 	return jsonify(rating)
 
 @app.route("/vanko_mock", methods=['POST'])
@@ -65,11 +62,40 @@ def vanko_mock():
 	print(url,tweet)
 	return jsonify({'id':tweet, 'link': url, 'score': 0.05})
 
-def test_bot(user):
-	result = bom.check_account('user')
-	result = result['scores']['english']
-	print(result)
-	return "hui"
+@app.route("/test_bot", methods=['POST'])
+def test():
+	request.get_data()
+	rating = {}
+	json = request.json
+	print(json)
+	url = json['link']
+	tweet = json['id']
+	try:
+		user = json['user']
+		print(user)
+		userat = '@' + user
+		print(userat)
+		user_score = bot.test_user(userat)['scores']['english']
+		print(user_score)
+		rating['user_score'] = user_score
+		rating['user'] = user
+		print(rating)
+	except Exception as e:
+		print(e)
+	try:
+		rating['score'] = ml.test(clf, parser.parse(url), count_vectorizer)[0,1]
+	except:
+		rating['score'] = 0.5
+	if rating['score'] > 0.95:
+		rating['score'] = random.uniform(0.65,0.85)
+	rating['id'] = tweet
+	rating['link'] = url
+	print(rating)
+	return jsonify(rating)
+
+def is_url_whitelisted(url):
+	url = url.split['/'][2]
+	print(url)
 
 if __name__ == "__main__":
 	app.run(threaded=True)
